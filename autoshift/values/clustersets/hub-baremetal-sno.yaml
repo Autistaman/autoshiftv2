@@ -31,9 +31,22 @@ hubClusterSets:
             storage_type: file
             file_storage_size: 10Gi
             file_storage_storage_class: ocs-storagecluster-cephfs
+      # Lab: hub provisions SNO spokes over Redfish (sushy-emulator). Offer only the
+      # RHCOS 4.22 image so the assisted-image-service volume can be small.
+      acm:
+        provisioning:
+          databaseSize: 10Gi
+          filesystemStorageSize: 20Gi
+          imageStorageSize: 20Gi
+          osImages:
+            - openshiftVersion: '4.22'
+              version: '9.8.20260715-1'
+              cpuArchitecture: x86_64
+              url: 'https://rhcos.mirror.openshift.com/art/storage/prod/streams/rhel-9.8/builds/9.8.20260715-1/x86_64/rhcos-9.8.20260715-1-live-iso.x86_64.iso'
+              rootFSUrl: 'https://rhcos.mirror.openshift.com/art/storage/prod/streams/rhel-9.8/builds/9.8.20260715-1/x86_64/rhcos-9.8.20260715-1-live-rootfs.x86_64.img'
     labels:
       # OpenShift version for cluster deployment and image mirroring
-      openshift-version: '4.22.8'
+      openshift-version: '4.22.18'
       self-managed: 'true'
       ### Advance Cluster Manager
       acm-subscription-name: advanced-cluster-management
@@ -42,7 +55,8 @@ hubClusterSets:
       acm-source-namespace: openshift-marketplace
       acm-availability-config: 'Basic'
       acm-observability: 'false'
-      # acm-enable-provisioning: 'false'
+      # Metal3 Provisioning (provisioningNetwork: Disabled) so spokes boot via redfish-virtualmedia
+      acm-enable-provisioning: 'true'
       acm-search-storage: 'true'
       # acm-search-storage-class: 'ocs-storagecluster-ceph-rbd'
       # acm-search-storage-size: '100Gi'
@@ -50,7 +64,7 @@ hubClusterSets:
       gitops: 'true' # is expected to be installed on all hub clusters
       gitops-subscription-name: openshift-gitops-operator
       gitops-disable-default-argocd: 'true'
-      gitops-channel: gitops-1.21
+      gitops-channel: gitops-1.22   # matches the operator installed on the hub (v1.22.2)
       gitops-source: redhat-operators
       gitops-source-namespace: openshift-marketplace
       # gitops-namespace: 'openshift-gitops'  # Override ArgoCD namespace per-cluster
@@ -58,15 +72,15 @@ hubClusterSets:
       master-nodes: 'true'
       master-max-pods: 500
       ### Storage Nodes
-      storage-nodes: '1'
-      storage-nodes-provider: baremetal
+      # storage-nodes: '1'   # lab: single node, no dedicated storage nodes
+      # storage-nodes-provider: baremetal
       ### Machine Health Checks
       machine-health-checks: 'false'
       machine-health-checks-worker: 'false'
       machine-health-checks-infra: 'false'
       machine-health-checks-storage: 'false'
       ### MetalLB
-      metallb: 'true'
+      metallb: 'false'   # lab: API/ingress use the node IP; no address pools defined
       metallb-subscription-name: metallb-operator
       # metallb-version: 'metallb-operator.v4.22.0-202608251608'
       metallb-source: redhat-operators
@@ -175,7 +189,7 @@ hubClusterSets:
       local-storage-source: redhat-operators
       local-storage-source-namespace: openshift-marketplace
       ### OpenShift Data Foundation
-      odf: 'true'
+      odf: 'false'   # lab: LVMS on vdb instead (ODF needs more disks/RAM than this SNO has)
       odf-subscription-name: odf-operator
       odf-multi-cloud-gateway: standalone
       # odf-nooba-pvpool: ''
@@ -193,13 +207,12 @@ hubClusterSets:
       imageregistry: 'true'
       imageregistry-management-state: Managed
       imageregistry-replicas: '1'
-      imageregistry-storage-type: s3 # pvc
-      imageregistry-s3-region: us-east-2
-      imageregistry-pvc-access-mode: ReadWriteMany
-      imageregistry-pvc-size: 100Gi
-      imageregistry-pvc-storage-class: ocs-storagecluster-ceph-rbd
-      imageregistry-pvc-volume-mode: Block
-      imageregistry-rollout-strategy: RollingUpdate
+      imageregistry-storage-type: pvc   # lab: no ODF/NooBaa, so back the registry with an LVMS PVC
+      imageregistry-pvc-access-mode: ReadWriteOnce
+      imageregistry-pvc-size: 30Gi
+      imageregistry-pvc-storage-class: lvms-vg1
+      imageregistry-pvc-volume-mode: Filesystem
+      imageregistry-rollout-strategy: Recreate   # RWO volume can't be shared during a rolling update
       ### Advanced Cluster Security
       acs: 'false'
       acs-subscription-name: rhacs-operator
@@ -238,7 +251,7 @@ hubClusterSets:
       quay-source: redhat-operators
       quay-source-namespace: openshift-marketplace
       ### Developer OpenShift Gitops
-      gitops-dev: 'true'
+      gitops-dev: 'false'   # lab: skip the extra developer Argo CD instance to save hub memory
       ### Loki
       loki: 'false'
       loki-subscription-name: loki-operator
@@ -270,14 +283,14 @@ hubClusterSets:
       compliance-source-namespace: openshift-marketplace
       compliance-channel: stable
       ### Migration Toolkit for Openshift Virtualization
-      mtv: 'true'
+      mtv: 'false'   # lab: not needed, saves hub memory
       mtv-subscription-name: mtv-operator
       mtv-channel: release-v2.12
       mtv-source: redhat-operators
       mtv-source-namespace: openshift-marketplace
       mtv-version: 'mtv-operator.v2.12.7'
       ### node-maintenance
-      node-maintenance: 'true'
+      node-maintenance: 'false'   # lab: single node, nothing to drain to
       node-maintenance-subscription-name: node-maintenance-operator
       node-maintenance-channel: stable
       node-maintenance-source: redhat-operators
