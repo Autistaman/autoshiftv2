@@ -57,6 +57,8 @@ hubClusterSets:
       acm-observability: 'false'
       # Metal3 Provisioning (provisioningNetwork: Disabled) so spokes boot via redfish-virtualmedia
       acm-enable-provisioning: 'true'
+      # Enables the SiteConfig component on the MultiClusterHub and the cluster-install policies
+      cluster-install: 'true'
       acm-search-storage: 'true'
       # acm-search-storage-class: 'ocs-storagecluster-ceph-rbd'
       # acm-search-storage-size: '100Gi'

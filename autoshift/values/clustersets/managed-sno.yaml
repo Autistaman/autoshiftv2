@@ -1,0 +1,20 @@
+# Lab SNO spokes (libvirt VMs behind sushy-emulator, 8 vCPU / 16 GB, 50G data disk on vdb).
+# A deliberately small baseline: the stock "managed" clusterset (ODF, ACS, service mesh,
+# Tempo, Kiali, logging...) does not fit a 16 GB single node.
+managedClusterSets:
+  managed-sno:
+    labels:
+      openshift-version: '4.22.18'
+      ### Master Nodes (SNO: the single node is master + worker)
+      master-nodes: 'true'
+      master-max-pods: '250'
+      ### LVM Operator (default StorageClass lvms-vg1 on the vdb data disk)
+      lvm: 'true'
+      lvm-subscription-name: lvms-operator
+      lvm-default: 'true'
+      lvm-fstype: xfs
+      lvm-size-percent: 90
+      lvm-overprovision-ratio: 10
+      lvm-channel: stable-4.22
+      lvm-source: redhat-operators
+      lvm-source-namespace: openshift-marketplace

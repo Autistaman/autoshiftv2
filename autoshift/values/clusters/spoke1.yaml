@@ -1,0 +1,47 @@
+# SNO spoke "spoke1" — libvirt VM provisioned by the hub over Redfish (sushy-emulator).
+# See /home/mnovak/VirtualMachines/README.md for the lab layout.
+clusters:
+  spoke1:
+    config:
+      clusterSet: managed-sno
+
+      networking:
+        clusterNetwork:
+          cidr: 10.128.0.0/14
+          hostPrefix: 23
+        machineNetwork:
+          cidr: '192.168.140.0/24'      # libvirt network "ocp"
+        serviceNetwork:
+          - 172.30.0.0/16
+        interfaces:
+          mgmt:
+            type: ethernet
+            name: enp1s0
+            ipv4: dhcp                  # fixed lease by MAC in the "ocp" network
+            ipv6: disabled
+
+      hosts:
+        master-0:
+          role: master
+          # BMC address = <bmcPrefix>://<bmcIP><bmcEndpoint>; sushy serves plain HTTP on :8000
+          bmcIP: '192.168.69.244:8000'
+          bmcPrefix: 'redfish-virtualmedia+http'
+          bmcEndpoint: '/redfish/v1/Systems/01a1b8be-3a3e-432b-93aa-74ffc2a1e817'
+          bootMACAddress: '52:54:00:14:00:11'
+          rootDeviceHints:
+            deviceName: '/dev/vda'      # 150G root disk; vdb is left for LVMS
+          interfaces:
+            - macAddress: '52:54:00:14:00:11'
+              name: 'enp1s0'
+
+      clusterInstall:
+        createCluster: 'true'
+        platform: baremetal
+        baseDomain: ocp.lab             # api.spoke1.ocp.lab / *.apps.spoke1.ocp.lab served by the "ocp" dnsmasq
+        openshiftVersion: '4.22.18'
+        cpuArch: x86_64
+        controlPlaneAgents: 1           # SNO
+        sshPublicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjRssHEkNzHFM50eveDi8MqOth9rjjcev5wYgDK07E2 ocp-lab'
+        pullSecretRef: 'default-pull-secret'
+        bmcCredentialRef: 'default-bmc-cred'
+        secretSourceNamespace: 'cluster-install-secrets'
