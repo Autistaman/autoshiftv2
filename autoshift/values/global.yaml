@@ -12,7 +12,7 @@ autoshift:
 #
 # Git mode renders PolicyGenerator dirs live through the CMP sidecar, so it needs
 # policyGenerator: true below. OCI mode deploys prerendered Helm charts and never uses the CMP.
-autoshiftGitRepo: https://github.com/auto-shift/autoshiftv2.git
+autoshiftGitRepo: https://github.com/Autistaman/autoshiftv2.git
 autoshiftGitBranchTag: main
 
 # OCI mode. autoshiftOciRepo alone selects it; both values are required together.
