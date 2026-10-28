@@ -175,7 +175,7 @@ hubClusterSets:
       # nmstate-host-{id}-bond-{id}-ipv4-address-{M}-cidr: CIDR prefix
       # (Same pattern for vlan, ethernet, ovs-bridge, ovn-mapping, route, dns)
       ### LVM Operator
-      lvm: 'true'
+      lvm: 'false'   # hub LVMS was installed manually (openshift-lvm-storage) and holds the hub PVs; AutoShift's LVMS policy is hardcoded to openshift-storage and would clash
       lvm-subscription-name: lvms-operator
       lvm-default: 'true'
       lvm-fstype: xfs
