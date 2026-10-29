@@ -2,13 +2,13 @@
 # See /home/mnovak/VirtualMachines/README.md for the lab layout.
 clusters:
   spoke1:
-    # labels:
-    #   rhbk: 'true'
-    #   rhbk-subscription-name: rhbk-operator
-    #   rhbk-channel: stable-v26.6
-    #   rhbk-source: redhat-operators
-    #   rhbk-source-namespace: openshift-marketplace
-    #   rhbk-db-size: 5Gi
+    labels:
+      rhbk: 'true'
+      rhbk-subscription-name: rhbk-operator
+      rhbk-channel: stable-v26.6
+      rhbk-source: redhat-operators
+      rhbk-source-namespace: openshift-marketplace
+      rhbk-db-size: 5Gi
     config:
       clusterSet: managed-sno
 
