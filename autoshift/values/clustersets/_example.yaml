@@ -1986,3 +1986,16 @@ hubClusterSets:
       trident-source-namespace: openshift-marketplace
       trident-channel: stable
       trident-version: 'trident-operator.v25.06.0'   # optional CSV version pin
+
+      # =======================================================================
+      # Rhbk
+      # =======================================================================
+      rhbk: 'false'
+      rhbk-subscription-name: rhbk-operator
+      rhbk-channel: stable-v26.6
+      rhbk-source: redhat-operators
+      rhbk-source-namespace: openshift-marketplace
+      rhbk-version: ''
+      rhbk-db-storage-class: ''   # standalone Postgres PVC class; blank = cluster default
+      rhbk-db-size: 5Gi
+      rhbk-db-image: registry.redhat.io/rhel9/postgresql-16:latest

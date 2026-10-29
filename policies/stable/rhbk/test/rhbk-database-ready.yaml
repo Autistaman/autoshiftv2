@@ -1,0 +1,9 @@
+# Readiness gate: the Postgres StatefulSet has a ready replica before Keycloak is created. Its PG
+# policy entry is remediationAction: inform (a status can only be observed, never enforced).
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rhbk-db
+  namespace: rhbk
+status:
+  readyReplicas: 1

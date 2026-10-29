@@ -1,0 +1,11 @@
+# Readiness gate: the operator reports the Keycloak instance Ready. Its PG policy entry is
+# remediationAction: inform (a status can only be observed, never enforced).
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: rhbk
+status:
+  conditions:
+    - type: Ready
+      status: 'True'

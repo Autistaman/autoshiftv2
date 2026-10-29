@@ -1,0 +1,72 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: rhbk
+# Per-deployment scalars (${...}) are substituted by the repo-server CMP (envsubst/sed) BEFORE
+# `kustomize build` runs. They live here and in placement.yaml — never in manifests/, whose hub
+# templates contain `$vars` that substitution would clobber.
+#
+# The operator-install policy points at manifests/operator-install/, a nested kustomization that
+# renders the shared components/operator-install chart. Add further CRs as new policies[] entries
+# pointing at their own manifests/<dir> (a wildcarded dir picks up drop-in files automatically).
+# Keep placement.yaml OUT of manifests/ (a Placement inside a wildcarded dir would be wrapped in).
+# All policies share placement.yaml (predicate autoshift.io/rhbk), so the binding needs a fixed name.
+placementBindingDefaults:
+  name: binding-policy-rhbk
+policyDefaults:
+  namespace: ${POLICY_NAMESPACE}
+  # ${REMEDIATION} = inform when autoshift.dryRun, else enforce.
+  remediationAction: ${REMEDIATION}
+  severity: high
+  # Consolidate the raw Namespace into one generated ConfigurationPolicy; the first-class
+  # OperatorPolicy stays its own policy-template. Net: one Policy, two policy-templates.
+  consolidateManifests: true
+  evaluationInterval:
+    compliant: ${EVAL_COMPLIANT}
+    noncompliant: ${EVAL_NONCOMPLIANT}
+  standards:
+    - NIST SP 800-53
+  categories:
+    - CM Configuration Management
+  controls:
+    - CM-2 Baseline Configuration
+  # Placement authored by us (placement.yaml at the dir root, full fidelity); PG includes it and
+  # generates only the PlacementBinding.
+  placement:
+    placementPath: placement.yaml
+policies:
+  # 1) Operator install: Namespace + OperatorPolicy (OwnNamespace OperatorGroup on rhbk).
+  - name: policy-rhbk-operator-install
+    manifests:
+      - path: manifests/operator-install
+  # 2) Standalone Postgres: credentials Secret (seeded on the cluster) + Service + StatefulSet.
+  - name: policy-rhbk-database
+    dependencies:
+      - name: policy-rhbk-operator-install
+    manifests:
+      - path: manifests/rhbk-database.yaml
+  # 2-test) Postgres has a ready replica — a test/ assertion, so ALWAYS inform.
+  - name: policy-rhbk-database-ready-test
+    remediationAction: inform
+    dependencies:
+      - name: policy-rhbk-database
+    manifests:
+      - path: test/rhbk-database-ready.yaml
+  # 3) Keycloak CR + edge Route. Waits on the database being ready, not merely applied.
+  - name: policy-rhbk-instance
+    dependencies:
+      - name: policy-rhbk-database-ready-test
+    manifests:
+      - path: manifests/rhbk-instance.yaml
+  # 3-test) Keycloak reports Ready — a test/ assertion, so ALWAYS inform.
+  - name: policy-rhbk-instance-ready-test
+    remediationAction: inform
+    customMessage:
+      noncompliant: >-
+        The Keycloak instance in rhbk is not Ready. Check its conditions (oc get keycloak keycloak -n
+        rhbk -o yaml) and the keycloak-0 pod log. Common causes are the rhbk-db database being
+        unreachable and a config.rhbk.instance value the operator rejects.
+    dependencies:
+      - name: policy-rhbk-instance
+    manifests:
+      - path: test/rhbk-instance-ready.yaml

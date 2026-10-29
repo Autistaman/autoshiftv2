@@ -1,0 +1,129 @@
+# Standalone PostgreSQL for Keycloak: credentials Secret + Service + single-replica StatefulSet.
+# RHBK ships no database; this is the lab-sized option. For HA use policies/certified/cloudnative-pg.
+#
+# The password is seeded once, on the managed cluster, and never comes from git. It is a SHA-256 of
+# the rhbk Namespace UID and the openshift-config/pull-secret UID: random per cluster, and the second
+# is readable only by cluster admins. stringData is rendered only while the Secret has no password,
+# because musthave merges it and an unconditional block would rotate the password on every reconcile.
+# The rhbk Namespace exists by now: this policy depends on policy-rhbk-operator-install.
+#
+# Labels: rhbk-db-storage-class (blank = cluster default), rhbk-db-size (default 5Gi),
+# rhbk-db-image (default registry.redhat.io/rhel9/postgresql-16:latest).
+# volumeClaimTemplates are immutable: changing the class or size after the first deploy leaves the
+# policy NonCompliant until the StatefulSet (not the PVC) is deleted and recreated.
+object-templates-raw: |
+  {{hub- $labels := .ManagedClusterLabels hub}}
+  {{hub- $storageClass := (index $labels "autoshift.io/rhbk-db-storage-class" | default "") hub}}
+  {{- $existing := ((lookup "v1" "Secret" "rhbk" "rhbk-db") | default dict) }}
+  {{- $existingPass := (index ($existing.data | default dict) "password" | default "") }}
+  {{- $nsUID := (dig "metadata" "uid" "" ((lookup "v1" "Namespace" "" "rhbk") | default dict)) }}
+  {{- $pullUID := (dig "metadata" "uid" "" ((lookup "v1" "Secret" "openshift-config" "pull-secret") | default dict)) }}
+  - complianceType: musthave
+    objectDefinition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: rhbk-db
+        namespace: rhbk
+      type: Opaque
+      {{- if (and (empty $existingPass) (not (empty $nsUID))) }}
+      stringData:
+        username: keycloak
+        database: keycloak
+        password: {{ printf "%s-%s" $nsUID $pullUID | sha256sum | trunc 40 }}
+      {{- end }}
+  - complianceType: musthave
+    objectDefinition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: rhbk-db
+        namespace: rhbk
+        labels:
+          app: rhbk-db
+      spec:
+        selector:
+          app: rhbk-db
+        ports:
+          - name: postgres
+            port: 5432
+            targetPort: 5432
+  - complianceType: musthave
+    objectDefinition:
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: rhbk-db
+        namespace: rhbk
+        labels:
+          app: rhbk-db
+      spec:
+        serviceName: rhbk-db
+        replicas: 1
+        selector:
+          matchLabels:
+            app: rhbk-db
+        template:
+          metadata:
+            labels:
+              app: rhbk-db
+          spec:
+            containers:
+              - name: postgres
+                image: '{{hub index $labels "autoshift.io/rhbk-db-image" | default "registry.redhat.io/rhel9/postgresql-16:latest" hub}}'
+                ports:
+                  - name: postgres
+                    containerPort: 5432
+                env:
+                  - name: POSTGRESQL_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: rhbk-db
+                        key: username
+                  - name: POSTGRESQL_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: rhbk-db
+                        key: password
+                  - name: POSTGRESQL_DATABASE
+                    valueFrom:
+                      secretKeyRef:
+                        name: rhbk-db
+                        key: database
+                readinessProbe:
+                  exec:
+                    command: ["/usr/libexec/check-container"]
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                livenessProbe:
+                  exec:
+                    command: ["/usr/libexec/check-container", "--live"]
+                  initialDelaySeconds: 120
+                  periodSeconds: 10
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 256Mi
+                  limits:
+                    memory: 1Gi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  runAsNonRoot: true
+                  capabilities:
+                    drop: ["ALL"]
+                  seccompProfile:
+                    type: RuntimeDefault
+                volumeMounts:
+                  - name: data
+                    mountPath: /var/lib/pgsql/data
+        volumeClaimTemplates:
+          - metadata:
+              name: data
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              {{hub- if $storageClass hub}}
+              storageClassName: {{hub $storageClass hub}}
+              {{hub- end hub}}
+              resources:
+                requests:
+                  storage: '{{hub index $labels "autoshift.io/rhbk-db-size" | default "5Gi" hub}}'

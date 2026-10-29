@@ -1,0 +1,63 @@
+# Keycloak instance + its Route. The spec is built in layers, later wins:
+#   1. base: one instance on the rhbk-db Postgres, HTTP inside the cluster, TLS at an edge Route
+#   2. config.rhbk.instance from the cluster's rendered-config (any Keycloak spec field)
+# Maps merge key by key; lists are replaced whole. Field names: oc explain keycloak.spec --recursive.
+#
+# hostname.hostname defaults to keycloak.<apps domain>, read on the managed cluster. Setting
+# config.rhbk.instance.hostname replaces that default, so set hostname.hostname there too (a bare
+# host, no scheme): the Route uses it as its host.
+# fromConfigMap fails the policy when rendered-config is missing, rather than rendering the base alone.
+object-templates-raw: |
+  {{hub- $cfg := (fromConfigMap .PolicyMetadata.namespace (printf "%s.rendered-config" .ManagedClusterName) "config" | default "" | fromYaml | default dict) hub}}
+  {{hub- $spec := (`
+  instances: 1
+  db:
+    vendor: postgres
+    host: rhbk-db
+    port: 5432
+    database: keycloak
+    usernameSecret:
+      name: rhbk-db
+      key: username
+    passwordSecret:
+      name: rhbk-db
+      key: password
+  http:
+    httpEnabled: true
+  proxy:
+    headers: xforwarded
+  ingress:
+    enabled: false` | fromYaml) hub}}
+  {{hub- $spec = (mergeOverwrite $spec (dig "rhbk" "instance" (dict) $cfg)) hub}}
+  {{hub- $cfgHost := (dig "hostname" "hostname" "" $spec) hub}}
+  {{- $appsDomain := (dig "spec" "domain" "" ((lookup "config.openshift.io/v1" "Ingress" "" "cluster") | default dict)) }}
+  - complianceType: musthave
+    objectDefinition:
+      apiVersion: k8s.keycloak.org/v2alpha1
+      kind: Keycloak
+      metadata:
+        name: keycloak
+        namespace: rhbk
+      spec:
+        {{hub $spec | toYaml | autoindent hub}}
+        {{hub- if not (hasKey $spec "hostname") hub}}
+        hostname:
+          hostname: keycloak.{{ $appsDomain }}
+        {{hub- end hub}}
+  - complianceType: musthave
+    objectDefinition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: keycloak
+        namespace: rhbk
+      spec:
+        host: {{hub if $cfgHost hub}}{{hub $cfgHost hub}}{{hub else hub}}keycloak.{{ $appsDomain }}{{hub end hub}}
+        to:
+          kind: Service
+          name: keycloak-service
+        port:
+          targetPort: http
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
