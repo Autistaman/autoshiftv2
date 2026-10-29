@@ -10,7 +10,7 @@
 object-templates-raw: |
   {{hub- $cfg := (fromConfigMap .PolicyMetadata.namespace (printf "%s.rendered-config" .ManagedClusterName) "config" | default "" | fromYaml | default dict) hub}}
   {{hub- $spec := (`
-  instances: 1
+  instances: 2
   db:
     vendor: postgres
     host: rhbk-db
