@@ -4,7 +4,7 @@
 managedClusterSets:
   managed-sno:
     labels:
-      openshift-version: '4.22.18'
+      openshift-version: '4.22.19'
       ### Master Nodes (SNO: the single node is master + worker)
       master-nodes: 'true'
       master-max-pods: '250'
