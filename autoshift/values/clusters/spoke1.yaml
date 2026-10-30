@@ -9,6 +9,7 @@ clusters:
       rhbk-source: redhat-operators
       rhbk-source-namespace: openshift-marketplace
       rhbk-db-size: 5Gi
+      openshift-upgrade: true
     config:
       clusterSet: managed-sno
 
