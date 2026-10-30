@@ -45,7 +45,7 @@ clusters:
         createCluster: 'true'
         platform: baremetal
         baseDomain: ocp.lab             # api.spoke1.ocp.lab / *.apps.spoke1.ocp.lab served by the "ocp" dnsmasq
-        openshiftVersion: '4.22.18'
+        openshiftVersion: '4.22.19'
         cpuArch: x86_64
         controlPlaneAgents: 1           # SNO
         sshPublicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPjRssHEkNzHFM50eveDi8MqOth9rjjcev5wYgDK07E2 ocp-lab'
