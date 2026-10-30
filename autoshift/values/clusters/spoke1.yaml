@@ -3,7 +3,7 @@
 clusters:
   spoke1:
     labels:
-      rhbk: 'true'
+      rhbk: 'false'
       rhbk-subscription-name: rhbk-operator
       rhbk-channel: stable-v26.6
       rhbk-source: redhat-operators
